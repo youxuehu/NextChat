@@ -118,7 +118,17 @@ async function request(req: NextRequest) {
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;
 
-      const jsonBody = JSON.parse(clonedBody) as { model?: string };
+      const jsonBody = JSON.parse(clonedBody) as {
+        model?: string;
+        messages?: any[];
+      };
+      const firstMsg = jsonBody?.messages?.[0];
+      const preview =
+        typeof firstMsg === "object"
+          ? JSON.stringify(firstMsg).slice(0, 200)
+          : "";
+      console.log("[Anthropic] incoming model:", jsonBody?.model);
+      if (preview) console.log("[Anthropic] first message:", preview);
 
       // not undefined and is false
       if (

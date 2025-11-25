@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "../config/server";
-import { OPENAI_BASE_URL, ServiceProvider } from "../constant";
+import {
+  OPENAI_BASE_URL,
+  ServiceProvider,
+  mapOpenAIModelName,
+} from "../constant";
 import { cloudflareAIGatewayUrl } from "../utils/cloudflare";
 import { getModelProvider, isModelNotavailableInServer } from "../utils/model";
 
@@ -117,17 +121,30 @@ export async function requestOpenai(req: NextRequest) {
       const jsonBody = JSON.parse(clonedBody) as { model?: string };
 
       // not undefined and is false
-      if (
-        isModelNotavailableInServer(
-          serverConfig.customModels,
-          jsonBody?.model as string,
-          [
-            ServiceProvider.OpenAI,
-            ServiceProvider.Azure,
-            jsonBody?.model as string, // support provider-unspecified model
-          ],
-        )
-      ) {
+      const modelName = jsonBody?.model as string;
+      const mappedModel = mapOpenAIModelName(modelName || "");
+      const blockedOriginal = isModelNotavailableInServer(
+        serverConfig.customModels,
+        modelName,
+        [
+          ServiceProvider.OpenAI,
+          ServiceProvider.Azure,
+          modelName, // support provider-unspecified model
+        ],
+      );
+      const blockedMapped =
+        mappedModel !== modelName
+          ? isModelNotavailableInServer(
+              serverConfig.customModels,
+              mappedModel,
+              [
+                ServiceProvider.OpenAI,
+                ServiceProvider.Azure,
+                mappedModel,
+              ],
+            )
+          : false;
+      if (blockedOriginal && blockedMapped) {
         return NextResponse.json(
           {
             error: true,

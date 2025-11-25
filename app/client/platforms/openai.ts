@@ -8,6 +8,7 @@ import {
   Azure,
   REQUEST_TIMEOUT_MS,
   ServiceProvider,
+  mapOpenAIModelName,
 } from "@/app/constant";
 import {
   ChatMessageTool,
@@ -122,6 +123,20 @@ export class ChatGPTApi implements LLMApi {
   }
 
   async extractMessage(res: any) {
+    // handle responses api output
+    if (Array.isArray(res?.output)) {
+      const texts: string[] = [];
+      res.output.forEach((item: any) => {
+        if (item?.content) {
+          item.content.forEach((c: any) => {
+            if (c?.text) texts.push(c.text);
+          });
+        } else if (item?.text) {
+          texts.push(item.text);
+        }
+      });
+      if (texts.length > 0) return texts.join("\n\n");
+    }
     if (res.error) {
       return "```\n" + JSON.stringify(res, null, 4) + "\n```";
     }
@@ -193,20 +208,21 @@ export class ChatGPTApi implements LLMApi {
       },
     };
 
-    let requestPayload: RequestPayload | DalleRequestPayload;
+    let requestPayload: RequestPayload | DalleRequestPayload | any;
 
-    const isDalle3 = _isDalle3(options.config.model);
+    const resolvedModel = mapOpenAIModelName(options.config.model);
+    const isDalle3 = _isDalle3(resolvedModel);
     const isO1OrO3 =
-      options.config.model.startsWith("o1") ||
-      options.config.model.startsWith("o3") ||
-      options.config.model.startsWith("o4-mini");
-    const isGpt5 =  options.config.model.startsWith("gpt-5");
+      resolvedModel.startsWith("o1") ||
+      resolvedModel.startsWith("o3") ||
+      resolvedModel.startsWith("o4-mini");
+    const isGpt5 =  resolvedModel.startsWith("gpt-5");
     if (isDalle3) {
       const prompt = getMessageTextContent(
         options.messages.slice(-1)?.pop() as any,
       );
       requestPayload = {
-        model: options.config.model,
+        model: resolvedModel,
         prompt,
         // URLs are only valid for 60 minutes after the image has been generated.
         response_format: "b64_json", // using b64_json, and save image in CacheStorage
@@ -227,25 +243,33 @@ export class ChatGPTApi implements LLMApi {
       }
 
       // O1 not support image, tools (plugin in ChatGPTNextWeb) and system, stream, logprobs, temperature, top_p, n, presence_penalty, frequency_penalty yet.
-      requestPayload = {
-        messages,
-        stream: options.config.stream,
-        model: modelConfig.model,
-        temperature: (!isO1OrO3 && !isGpt5) ? modelConfig.temperature : 1,
-        presence_penalty: !isO1OrO3 ? modelConfig.presence_penalty : 0,
-        frequency_penalty: !isO1OrO3 ? modelConfig.frequency_penalty : 0,
-        top_p: !isO1OrO3 ? modelConfig.top_p : 1,
-        // max_tokens: Math.max(modelConfig.max_tokens, 1024),
-        // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
-      };
-
       if (isGpt5) {
-  	// Remove max_tokens if present
-  	delete requestPayload.max_tokens;
-  	// Add max_completion_tokens (or max_completion_tokens if that's what you meant)
-  	requestPayload["max_completion_tokens"] = modelConfig.max_tokens;
+        // Responses API expects input array, not chat.completions
+        const input = messages.map((m) => ({
+          role: m.role,
+          content: [{ type: "input_text", text: m.content as string }],
+        }));
+        requestPayload = {
+          model: resolvedModel,
+          input,
+          stream: false, // keep simple: use non-stream for gpt-5 responses
+          max_output_tokens: modelConfig.max_tokens,
+        };
+      } else {
+        requestPayload = {
+          messages,
+          stream: options.config.stream,
+          model: resolvedModel,
+          temperature: (!isO1OrO3 && !isGpt5) ? modelConfig.temperature : 1,
+          presence_penalty: !isO1OrO3 ? modelConfig.presence_penalty : 0,
+          frequency_penalty: !isO1OrO3 ? modelConfig.frequency_penalty : 0,
+          top_p: !isO1OrO3 ? modelConfig.top_p : 1,
+          // max_tokens: Math.max(modelConfig.max_tokens, 1024),
+          // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
+        };
+      }
 
-      } else if (isO1OrO3) {
+      if (!isGpt5 && isO1OrO3) {
         // by default the o1/o3 models will not attempt to produce output that includes markdown formatting
         // manually add "Formatting re-enabled" developer message to encourage markdown inclusion in model responses
         // (https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/reasoning?tabs=python-secure#markdown-output)
@@ -260,14 +284,14 @@ export class ChatGPTApi implements LLMApi {
 
 
       // add max_tokens to vision model
-      if (visionModel && !isO1OrO3 && ! isGpt5) {
+      if (visionModel && !isO1OrO3 && !isGpt5) {
         requestPayload["max_tokens"] = Math.max(modelConfig.max_tokens, 4000);
       }
     }
 
     console.log("[Request] openai payload: ", requestPayload);
 
-    const shouldStream = !isDalle3 && !!options.config.stream;
+    const shouldStream = !isDalle3 && !!options.config.stream && !isGpt5;
     const controller = new AbortController();
     options.onController?.(controller);
 
@@ -300,7 +324,11 @@ export class ChatGPTApi implements LLMApi {
         );
       } else {
         chatPath = this.path(
-          isDalle3 ? OpenaiPath.ImagePath : OpenaiPath.ChatPath,
+          isDalle3
+            ? OpenaiPath.ImagePath
+            : isGpt5
+            ? OpenaiPath.ResponsePath
+            : OpenaiPath.ChatPath,
         );
       }
       if (shouldStream) {

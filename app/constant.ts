@@ -181,7 +181,16 @@ export const OpenaiPath = {
   ImagePath: "v1/images/generations",
   UsagePath: "dashboard/billing/usage",
   SubsPath: "dashboard/billing/subscription",
+  ResponsePath: "v1/responses",
   ListModelPath: "v1/models",
+};
+
+// normalize openai model aliases
+export const mapOpenAIModelName = (modelName: string) => {
+  if (modelName === "gpt-5-chat" || modelName === "gpt-5") {
+    return "gpt-5.1";
+  }
+  return modelName;
 };
 
 export const Azure = {
@@ -196,7 +205,13 @@ export const Azure = {
 export const Google = {
   ExampleEndpoint: "https://generativelanguage.googleapis.com/",
   ChatPath: (modelName: string) =>
-    `v1beta/models/${modelName}:streamGenerateContent`,
+    `v1beta/models/${mapGoogleModelName(modelName)}:streamGenerateContent`,
+};
+
+// normalize Google model aliases
+const mapGoogleModelName = (modelName: string) => {
+  if (modelName === "gemini-3.0") return "gemini-3-pro-preview";
+  return modelName;
 };
 
 export const Baidu = {
@@ -523,6 +538,8 @@ const openaiModels = [
   "gpt-5-nano",
   "gpt-5",
   "gpt-5-chat-2025-01-01-preview",
+  "gpt-5.1",
+  "gpt-5.1-chat-latest",
   "gpt-4o",
   "gpt-4o-2024-05-13",
   "gpt-4o-2024-08-06",
@@ -561,7 +578,9 @@ const googleModels = [
   "gemini-2.0-pro-exp",
   "gemini-2.0-pro-exp-02-05",
   "gemini-2.5-pro-preview-06-05",
-  "gemini-2.5-pro"
+  "gemini-2.5-pro",
+  "gemini-3.0",
+  "gemini-3-pro-preview",
 ];
 
 const anthropicModels = [
@@ -581,6 +600,9 @@ const anthropicModels = [
   "claude-3-7-sonnet-latest",
   "claude-sonnet-4-20250514",
   "claude-opus-4-20250514",
+  "claude-haiku-4-5-20251001",
+  "claude-sonnet-4-5-20250929",
+  "claude-opus-4-1-20250805",
 ];
 
 const baiduModels = [

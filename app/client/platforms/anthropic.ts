@@ -179,14 +179,22 @@ export class ClaudeApi implements LLMApi {
       });
     }
 
+    // Anthropic new models reject sending both temperature and top_p.
+    // Prefer temperature and drop top_p if both are set to avoid 400 errors.
+    const useTemperature = modelConfig.temperature;
+    const useTopP =
+      useTemperature !== undefined && useTemperature !== null
+        ? undefined
+        : modelConfig.top_p;
+
     const requestBody: AnthropicChatRequest = {
       messages: prompt,
       stream: shouldStream,
 
       model: modelConfig.model,
       max_tokens: modelConfig.max_tokens,
-      temperature: modelConfig.temperature,
-      top_p: modelConfig.top_p,
+      temperature: useTemperature,
+      top_p: useTopP,
       // top_k: modelConfig.top_k,
       top_k: 5,
     };
