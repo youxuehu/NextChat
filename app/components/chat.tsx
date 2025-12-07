@@ -1755,8 +1755,6 @@ function _Chat() {
                   title={Locale.Chat.Actions.FullScreen}
                   aria={Locale.Chat.Actions.FullScreen}
                   onClick={() => {
-                    console.log(`xxxxxxxxxxxx`);
-                    console.log(`xxxxxxxxxxxx`);
                     config.update(
                       (config) => (config.tightBorder = !config.tightBorder),
                     );
@@ -1769,8 +1767,8 @@ function _Chat() {
                 <IconButton
                   icon={<WalletIcon />}
                   bordered
-                  title=""
-                  aria=""
+                  title="连接钱包"
+                  aria="连接钱包"
                   onClick={async () => {
                     await connectWallet();
                   }}
