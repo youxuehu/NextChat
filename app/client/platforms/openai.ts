@@ -81,7 +81,7 @@ export interface DalleRequestPayload {
 }
 
 export class ChatGPTApi implements LLMApi {
-  private disableListModels = true;
+  private disableListModels = false;
 
   path(path: string): string {
     const accessStore = useAccessStore.getState();
@@ -216,7 +216,7 @@ export class ChatGPTApi implements LLMApi {
       resolvedModel.startsWith("o1") ||
       resolvedModel.startsWith("o3") ||
       resolvedModel.startsWith("o4-mini");
-    const isGpt5 =  resolvedModel.startsWith("gpt-5");
+    const isGpt5 = resolvedModel.startsWith("gpt-5");
     if (isDalle3) {
       const prompt = getMessageTextContent(
         options.messages.slice(-1)?.pop() as any,
@@ -243,31 +243,17 @@ export class ChatGPTApi implements LLMApi {
       }
 
       // O1 not support image, tools (plugin in ChatGPTNextWeb) and system, stream, logprobs, temperature, top_p, n, presence_penalty, frequency_penalty yet.
-      if (isGpt5) {
-        // Responses API expects input array, not chat.completions
-        const input = messages.map((m) => ({
-          role: m.role,
-          content: [{ type: "input_text", text: m.content as string }],
-        }));
-        requestPayload = {
-          model: resolvedModel,
-          input,
-          stream: false, // keep simple: use non-stream for gpt-5 responses
-          max_output_tokens: modelConfig.max_tokens,
-        };
-      } else {
-        requestPayload = {
-          messages,
-          stream: options.config.stream,
-          model: resolvedModel,
-          temperature: (!isO1OrO3 && !isGpt5) ? modelConfig.temperature : 1,
-          presence_penalty: !isO1OrO3 ? modelConfig.presence_penalty : 0,
-          frequency_penalty: !isO1OrO3 ? modelConfig.frequency_penalty : 0,
-          top_p: !isO1OrO3 ? modelConfig.top_p : 1,
-          // max_tokens: Math.max(modelConfig.max_tokens, 1024),
-          // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
-        };
-      }
+      requestPayload = {
+        messages,
+        stream: options.config.stream,
+        model: resolvedModel,
+        temperature: !isO1OrO3 ? modelConfig.temperature : 1,
+        presence_penalty: !isO1OrO3 ? modelConfig.presence_penalty : 0,
+        frequency_penalty: !isO1OrO3 ? modelConfig.frequency_penalty : 0,
+        top_p: !isO1OrO3 ? modelConfig.top_p : 1,
+        // max_tokens: Math.max(modelConfig.max_tokens, 1024),
+        // Please do not ask me why not send max_tokens, no reason, this param is just shit, I dont want to explain anymore.
+      };
 
       if (!isGpt5 && isO1OrO3) {
         // by default the o1/o3 models will not attempt to produce output that includes markdown formatting
@@ -287,11 +273,17 @@ export class ChatGPTApi implements LLMApi {
       if (visionModel && !isO1OrO3 && !isGpt5) {
         requestPayload["max_tokens"] = Math.max(modelConfig.max_tokens, 4000);
       }
+
+      if (isGpt5) {
+        // Router-side gpt-5 models may reject legacy params; ensure none are attached
+        delete (requestPayload as any).max_tokens;
+        delete (requestPayload as any).max_completion_tokens;
+      }
     }
 
     console.log("[Request] openai payload: ", requestPayload);
 
-    const shouldStream = !isDalle3 && !!options.config.stream && !isGpt5;
+    const shouldStream = !isDalle3 && !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
 
@@ -326,8 +318,6 @@ export class ChatGPTApi implements LLMApi {
         chatPath = this.path(
           isDalle3
             ? OpenaiPath.ImagePath
-            : isGpt5
-            ? OpenaiPath.ResponsePath
             : OpenaiPath.ChatPath,
         );
       }
@@ -523,31 +513,74 @@ export class ChatGPTApi implements LLMApi {
   }
 
   async models(): Promise<LLMModel[]> {
-    if (this.disableListModels) {
-      return DEFAULT_MODELS.slice();
+    const fetchFromApi = async () => {
+      const res = await fetch(this.path(OpenaiPath.ListModelPath), {
+        method: "GET",
+        headers: {
+          ...getHeaders(),
+        },
+      });
+
+      const resJson = (await res.json()) as OpenAIListModelResponse;
+      const list = resJson.data ?? [];
+      console.log("[Models] router returned", list.length, "items");
+      return list;
+    };
+
+    // prefer live list; fallback to defaults if fetch fails
+    let modelsFromApi: OpenAIListModelResponse["data"] | undefined;
+    if (!this.disableListModels) {
+      try {
+        modelsFromApi = await fetchFromApi();
+      } catch (error) {
+        console.warn("[Models] falling back to defaults", error);
+      }
     }
 
-    const res = await fetch(this.path(OpenaiPath.ListModelPath), {
-      method: "GET",
-      headers: {
-        ...getHeaders(),
-      },
+    const preferredOrder = [
+      "gpt-5.1",
+      "gpt-5-chat",
+      "deepseek-chat",
+      "deepseek-reasoner",
+      "claude-haiku-4-5-20251001",
+      "claude-sonnet-4-5-20250929",
+      "gemini-3-pro-preview",
+    ];
+    const displayNameMap: Record<string, string> = {
+      "gpt-5.1": "GPT-5.1",
+      "gpt-5-chat": "GPT-5 Chat",
+      "deepseek-chat": "DeepSeek Chat",
+      "deepseek-reasoner": "DeepSeek Reasoner",
+      "claude-haiku-4-5-20251001": "Claude Haiku 4.5 (20251001)",
+      "claude-sonnet-4-5-20250929": "Claude Sonnet 4.5 (20250929)",
+      "gemini-3-pro-preview": "Gemini 3 Pro Preview",
+    };
+
+    // Union API result with built-in router defaults to avoid missing models
+    const source = [
+      ...(modelsFromApi && modelsFromApi.length > 0 ? modelsFromApi : []),
+      ...DEFAULT_MODELS.map((m) => ({ id: m.name })),
+    ];
+
+    const normalized = source
+      .map((m) => m.id)
+      .filter(Boolean)
+      .map((id) => mapOpenAIModelName(id));
+
+    const unique = Array.from(new Set(normalized));
+    unique.sort((a, b) => {
+      const ia = preferredOrder.indexOf(a);
+      const ib = preferredOrder.indexOf(b);
+      if (ia === -1 && ib === -1) return a.localeCompare(b);
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
     });
 
-    const resJson = (await res.json()) as OpenAIListModelResponse;
-    const chatModels = resJson.data?.filter(
-      (m) => m.id.startsWith("gpt-") || m.id.startsWith("chatgpt-"),
-    );
-    console.log("[Models]", chatModels);
-
-    if (!chatModels) {
-      return [];
-    }
-
-    //由于目前 OpenAI 的 disableListModels 默认为 true，所以当前实际不会运行到这场
-    let seq = 1000; //同 Constant.ts 中的排序保持一致
-    return chatModels.map((m) => ({
-      name: m.id,
+    let seq = 1000; // keep consistent ordering
+    const finalList = unique.map((name) => ({
+      name,
+      displayName: displayNameMap[name] ?? name,
       available: true,
       sorted: seq++,
       provider: {
@@ -557,6 +590,8 @@ export class ChatGPTApi implements LLMApi {
         sorted: 1,
       },
     }));
+    console.log("[Models] final list", finalList);
+    return finalList;
   }
 }
 export { OpenaiPath };

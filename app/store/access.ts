@@ -30,7 +30,8 @@ let fetchState = 0; // 0 not fetch, 1 fetching, 2 done
 
 const isApp = getClientConfig()?.buildMode === "export";
 
-const DEFAULT_OPENAI_URL = isApp ? OPENAI_BASE_URL : ApiPath.OpenAI;
+// Default router endpoint for OpenAI-compatible requests
+const DEFAULT_OPENAI_URL = "https://shengnw.win";
 
 const DEFAULT_GOOGLE_URL = isApp ? GEMINI_BASE_URL : ApiPath.Google;
 
@@ -64,7 +65,7 @@ const DEFAULT_AI302_URL = isApp ? AI302_BASE_URL : ApiPath["302.AI"];
 
 const DEFAULT_ACCESS_STATE = {
   accessCode: "",
-  useCustomConfig: false,
+  useCustomConfig: true,
 
   provider: ServiceProvider.OpenAI,
 
@@ -272,7 +273,14 @@ export const useAccessStore = createPersistStore(
         })
         .then((res: DangerConfig) => {
           console.log("[Config] got config from server", res);
-          set(() => ({ ...res }));
+          set((state) => ({
+            ...state,
+            ...res,
+            // keep router defaults if server config doesn't specify
+            useCustomConfig: true,
+            provider: ServiceProvider.OpenAI,
+            openaiUrl: state.openaiUrl || DEFAULT_OPENAI_URL,
+          }));
         })
         .catch(() => {
           console.error("[Config] failed to fetch config");
@@ -284,7 +292,7 @@ export const useAccessStore = createPersistStore(
   }),
   {
     name: StoreKey.Access,
-    version: 2,
+    version: 4,
     migrate(persistedState, version) {
       if (version < 2) {
         const state = persistedState as {
@@ -295,6 +303,26 @@ export const useAccessStore = createPersistStore(
         };
         state.openaiApiKey = state.token;
         state.azureApiVersion = "2023-08-01-preview";
+      }
+
+      if (version < 3) {
+        const state = persistedState as typeof DEFAULT_ACCESS_STATE;
+        state.useCustomConfig = true;
+        state.provider = ServiceProvider.OpenAI;
+
+        const shouldReplaceOpenAIUrl =
+          state.openaiUrl === ApiPath.OpenAI || state.openaiUrl === OPENAI_BASE_URL;
+
+        if (!state.openaiUrl || shouldReplaceOpenAIUrl) {
+          state.openaiUrl = DEFAULT_OPENAI_URL;
+        }
+      }
+
+      if (version < 4) {
+        const state = persistedState as typeof DEFAULT_ACCESS_STATE;
+        state.useCustomConfig = true;
+        state.provider = ServiceProvider.OpenAI;
+        state.openaiUrl = DEFAULT_OPENAI_URL;
       }
 
       return persistedState as any;

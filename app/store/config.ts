@@ -61,10 +61,10 @@ export const DEFAULT_CONFIG = {
   hideBuiltinMasks: false, // dont add builtin masks
 
   customModels: "",
-  models: DEFAULT_MODELS as any as LLMModel[],
+  models: DEFAULT_MODELS.map((m) => ({ ...m })) as any as LLMModel[],
 
   modelConfig: {
-    model: "gpt-4o-mini" as ModelType,
+    model: "gpt-5.1" as ModelType,
     providerName: "OpenAI" as ServiceProvider,
     temperature: 0.5,
     top_p: 1,
@@ -195,7 +195,7 @@ export const useAppConfig = createPersistStore(
   }),
   {
     name: StoreKey.Config,
-    version: 4.1,
+    version: 4.6,
 
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
@@ -253,6 +253,33 @@ export const useAppConfig = createPersistStore(
           DEFAULT_CONFIG.modelConfig.compressModel;
         state.modelConfig.compressProviderName =
           DEFAULT_CONFIG.modelConfig.compressProviderName;
+      }
+
+      if (version < 4.2) {
+        state.models = DEFAULT_MODELS as any as LLMModel[];
+        state.modelConfig.model = "gpt-5.1" as ModelType;
+        state.modelConfig.providerName = ServiceProvider.OpenAI;
+      }
+
+      if (version < 4.3) {
+        state.models = DEFAULT_MODELS as any as LLMModel[];
+      }
+
+      if (version < 4.4) {
+        state.models = DEFAULT_MODELS as any as LLMModel[];
+        state.modelConfig.model = "gpt-5.1" as ModelType;
+        state.modelConfig.providerName = ServiceProvider.OpenAI;
+      }
+
+      if (version < 4.5) {
+        // Force reset to router model set to avoid stale cached models
+        state.models = DEFAULT_MODELS.map((m) => ({ ...m })) as any as LLMModel[];
+        state.modelConfig.model = "gpt-5.1" as ModelType;
+        state.modelConfig.providerName = ServiceProvider.OpenAI;
+      }
+
+      if (version < 4.6) {
+        state.models = DEFAULT_MODELS.map((m) => ({ ...m })) as any as LLMModel[];
       }
 
       return state as any;
