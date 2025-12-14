@@ -61,13 +61,14 @@ const loadFunc = async () => {
 
 // ✅ 使用 IIFE 包裹异步逻辑，避免顶层 await
 (async () => {
-  if (document.readyState === "complete") {
-    console.log("页面已加载，立即检测钱包");
-    await loadFunc();
-  } else {
-    console.log("等待页面加载完成...");
-    window.addEventListener("load", loadFunc);
-  }
+  // if (document.readyState === "complete") {
+  //   console.log("页面已加载，立即检测钱包");
+  //   await loadFunc();
+  // } else {
+  //   console.log("等待页面加载完成...");
+  //   window.addEventListener("load", loadFunc);
+  // }
+  window.addEventListener("load", loadFunc);
 })();
 
 export function Loading(props: { noLogo?: boolean }) {
