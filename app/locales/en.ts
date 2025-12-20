@@ -734,6 +734,9 @@ const en: LocaleType = {
       Error: "OpenAPI Schema Error",
     },
   },
+  Wallet: {
+    CollectWallet: "collect wallet",
+  },
   Mask: {
     Name: "Mask",
     Page: {

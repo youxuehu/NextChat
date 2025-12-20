@@ -12,11 +12,16 @@ import MaskIcon from "../icons/mask.svg";
 import McpIcon from "../icons/mcp.svg";
 import DragIcon from "../icons/drag.svg";
 import DiscoveryIcon from "../icons/discovery.svg";
-
+import WalletIcon from "../icons/wallet.svg";
 import Locale from "../locales";
-
+import {
+  connectWallet,
+  getCurrentAccount,
+  isValidToken,
+} from "../plugins/wallet";
 import { useAppConfig, useChatStore } from "../store";
-
+import { Avatar } from "./emoji";
+import { WalletAccount } from "./emoji";
 import {
   DEFAULT_SIDEBAR_WIDTH,
   MAX_SIDEBAR_WIDTH,
@@ -61,6 +66,12 @@ export function useHotKey() {
   });
 }
 
+export function useWalletAccount() {
+  const token = localStorage.getItem("authToken");
+  return isValidToken(token).then((result) => {
+    return result;
+  });
+}
 export function useDragSideBar() {
   const limit = (x: number) => Math.min(MAX_SIDEBAR_WIDTH, x);
 
@@ -184,13 +195,13 @@ export function SideBarHeader(props: {
         })}
         data-tauri-drag-region
       >
+        <div className={clsx(styles["sidebar-logo"], "no-dark")}>{logo}</div>
         <div className={styles["sidebar-title-container"]}>
           <div className={styles["sidebar-title"]} data-tauri-drag-region>
             {title}
           </div>
           <div className={styles["sidebar-sub-title"]}>{subTitle}</div>
         </div>
-        <div className={clsx(styles["sidebar-logo"], "no-dark")}>{logo}</div>
       </div>
       {children}
     </Fragment>
@@ -227,6 +238,11 @@ export function SideBar(props: { className?: string }) {
   useHotKey();
   const { onDragStart, shouldNarrow } = useDragSideBar();
   const [showDiscoverySelector, setshowDiscoverySelector] = useState(false);
+
+  const [show, setShow] = useState(false);
+
+  useWalletAccount().then((result) => setShow(result));
+
   const navigate = useNavigate();
   const config = useAppConfig();
   const chatStore = useChatStore();
@@ -249,11 +265,35 @@ export function SideBar(props: { className?: string }) {
       {...props}
     >
       <SideBarHeader
-        title="YeYin Chat"
-        subTitle="Build your own AI assistant."
+        title="AIChat"
+        subTitle=""
         logo={<ChatGptIcon />}
         shouldNarrow={shouldNarrow}
       >
+        {!show && (
+          <div className={styles["sidebar-header-bar"]}>
+            <IconButton
+              icon={<WalletIcon />}
+              bordered
+              title={shouldNarrow ? undefined : Locale.Wallet.CollectWallet}
+              text={shouldNarrow ? undefined : Locale.Wallet.CollectWallet}
+              aria={shouldNarrow ? undefined : Locale.Wallet.CollectWallet}
+              className={styles["sidebar-bar-button"]}
+              onClick={async () => {
+                await connectWallet();
+              }}
+            />
+          </div>
+        )}
+        {show && (
+          <div className={styles["sidebar-header-bar"]}>
+            <Avatar avatar={config.avatar} />
+            <WalletAccount
+              address={getCurrentAccount()}
+              title={getCurrentAccount()}
+            />
+          </div>
+        )}
         <div className={styles["sidebar-header-bar"]}>
           <IconButton
             icon={<MaskIcon />}
