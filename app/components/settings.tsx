@@ -813,7 +813,7 @@ export function Settings() {
               </div>
             </Popover>
           </ListItem>
-          {!isAdmin && (
+          {isAdmin && (
             <ListItem
               title={Locale.Settings.Update.Version(
                 currentVersion ?? "unknown",
@@ -922,7 +922,7 @@ export function Settings() {
               }
             ></InputRange>
           </ListItem>
-          {!isAdmin && (
+          {isAdmin && (
             <ListItem
               title={Locale.Settings.FontFamily.Title}
               subTitle={Locale.Settings.FontFamily.SubTitle}
@@ -1186,7 +1186,7 @@ export function Settings() {
             }}
           />
         </List>
-        {!isAdmin && (
+        {isAdmin && (
           <List>
             <TTSConfigList
               ttsConfig={config.ttsConfig}
@@ -1199,7 +1199,7 @@ export function Settings() {
           </List>
         )}
 
-        {!isAdmin && <DangerItems />}
+        {isAdmin && <DangerItems />}
       </div>
     </ErrorBoundary>
   );
