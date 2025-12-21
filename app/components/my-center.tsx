@@ -41,8 +41,12 @@ export function Centers() {
     <div>
       <div className="window-header" data-tauri-drag-region>
         <div className="window-header-title">
-          <div className="window-header-main-title">个人中心</div>
-          <div className="window-header-sub-title">管理您的账户与资源</div>
+          <div className="window-header-main-title">
+            {Locale.MyCenter.Title}
+          </div>
+          <div className="window-header-sub-title">
+            {Locale.MyCenter.SubTitle}
+          </div>
         </div>
         <div className="window-actions">
           <div className="window-action-button"></div>

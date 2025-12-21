@@ -90,7 +90,11 @@ export async function connectWallet() {
 }
 
 export function getCurrentAccount() {
-  return localStorage.getItem("currentAccount");
+  let account = localStorage.getItem("currentAccount");
+  if (account === undefined || account === null) {
+    account = "";
+  }
+  return account;
 }
 
 // 获取链 ID
@@ -183,14 +187,20 @@ export async function loginWithChallenge() {
     // const avatar = await getAvatar(currentAccount)
     // console.log(`avatar=${avatar}`)
     notifySuccess(`✅登录成功`);
+    window.location.reload();
   } catch (error) {
     console.error("❌登录失败:", error);
     notifyError(`❌登录失败: ${error}`);
   }
 }
 
-export async function isValidToken(token: string): Promise<boolean> {
+export async function isValidToken(
+  token?: string | null | undefined,
+): Promise<boolean> {
   try {
+    if (token === undefined || token === null) {
+      return false;
+    }
     const secret = new TextEncoder().encode(
       JWT_SECRET ||
         "e802e988a02546cc47415e4bc76346aae7ceece97a0f950319c861a5de38b20d",

@@ -724,6 +724,9 @@ const cn = {
       Error: "格式错误",
     },
   },
+  Wallet: {
+    CollectWallet: "连接钱包",
+  },
   Mask: {
     Name: "面具",
     Page: {
