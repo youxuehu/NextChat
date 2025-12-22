@@ -547,7 +547,9 @@ export function ChatActions(props: {
         }),
       ),
     );
-    const filteredModels = allModels.filter((m) => m.available);
+    const filteredModels = allModels.filter(
+      (m: { available: any }) => m.available,
+    );
     console.log(
       "[ModelSelector] filteredModels",
       filteredModels.map(
@@ -564,7 +566,9 @@ export function ChatActions(props: {
         }),
       ),
     );
-    const defaultModel = filteredModels.find((m) => m.isDefault);
+    const defaultModel = filteredModels.find(
+      (m: { isDefault: any }) => m.isDefault,
+    );
 
     if (defaultModel) {
       const arr = [
@@ -578,7 +582,7 @@ export function ChatActions(props: {
   }, [allModels]);
   const currentModelName = useMemo(() => {
     const model = models.find(
-      (m) =>
+      (m: { name: string; provider: { providerName: ServiceProvider } }) =>
         m.name == currentModel &&
         m?.provider?.providerName == currentProviderName,
     );
@@ -611,7 +615,9 @@ export function ChatActions(props: {
 
     // if current model is not available
     // switch to first available model
-    const isUnavailableModel = !models.some((m) => m.name === currentModel);
+    const isUnavailableModel = !models.some(
+      (m: { name: string }) => m.name === currentModel,
+    );
     if (isUnavailableModel && models.length > 0) {
       // show next model to default model if exist
       let nextModel =
@@ -716,14 +722,20 @@ export function ChatActions(props: {
         {showModelSelector && (
           <Selector
             defaultSelectedValue={`${currentModel}@${currentProviderName}`}
-            items={models.map((m) => ({
-              title: `${m.displayName}${
-                m?.provider?.providerName
-                  ? " (" + m?.provider?.providerName + ")"
-                  : ""
-              }`,
-              value: `${m.name}@${m?.provider?.providerName}`,
-            }))}
+            items={models.map(
+              (m: {
+                displayName: any;
+                provider: { providerName: string };
+                name: any;
+              }) => ({
+                title: `${m.displayName}${
+                  m?.provider?.providerName
+                    ? " (" + m?.provider?.providerName + ")"
+                    : ""
+                }`,
+                value: `${m.name}@${m?.provider?.providerName}`,
+              }),
+            )}
             onClose={() => setShowModelSelector(false)}
             onSelection={(s) => {
               if (s.length === 0) return;
@@ -736,7 +748,7 @@ export function ChatActions(props: {
               });
               if (providerName == "ByteDance") {
                 const selectedModel = models.find(
-                  (m) =>
+                  (m: { name: string; provider: { providerName: string } }) =>
                     m.name == model &&
                     m?.provider?.providerName == providerName,
                 );

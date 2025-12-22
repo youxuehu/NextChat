@@ -8,6 +8,14 @@ import { useAllModels } from "../utils/hooks";
 import { groupBy } from "lodash-es";
 import styles from "./model-config.module.scss";
 import { getModelProvider } from "../utils/model";
+import {
+  ReactElement,
+  JSXElementConstructor,
+  ReactNode,
+  ReactPortal,
+  AwaitedReactNode,
+  Key,
+} from "react";
 
 export function ModelConfigList(props: {
   modelConfig: ModelConfig;
@@ -15,7 +23,7 @@ export function ModelConfigList(props: {
 }) {
   const allModels = useAllModels();
   const groupModels = groupBy(
-    allModels.filter((v) => v.available),
+    allModels.filter((v: { available: any }) => v.available),
     "provider.providerName",
   );
   const value = `${props.modelConfig.model}@${props.modelConfig?.providerName}`;
@@ -260,12 +268,41 @@ export function ModelConfigList(props: {
           }}
         >
           {allModels
-            .filter((v) => v.available)
-            .map((v, i) => (
-              <option value={`${v.name}@${v.provider?.providerName}`} key={i}>
-                {v.displayName}({v.provider?.providerName})
-              </option>
-            ))}
+            .filter((v: { available: any }) => v.available)
+            .map(
+              (
+                v: {
+                  name: any;
+                  provider: {
+                    providerName:
+                      | string
+                      | number
+                      | boolean
+                      | ReactElement<any, string | JSXElementConstructor<any>>
+                      | Iterable<ReactNode>
+                      | ReactPortal
+                      | Promise<AwaitedReactNode>
+                      | null
+                      | undefined;
+                  };
+                  displayName:
+                    | string
+                    | number
+                    | boolean
+                    | ReactElement<any, string | JSXElementConstructor<any>>
+                    | Iterable<ReactNode>
+                    | ReactPortal
+                    | Promise<AwaitedReactNode>
+                    | null
+                    | undefined;
+                },
+                i: Key | null | undefined,
+              ) => (
+                <option value={`${v.name}@${v.provider?.providerName}`} key={i}>
+                  {v.displayName}({v.provider?.providerName})
+                </option>
+              ),
+            )}
         </Select>
       </ListItem>
     </>
