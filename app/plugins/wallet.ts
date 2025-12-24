@@ -1,11 +1,8 @@
-import { jwtVerify } from "jose";
 import { notifyError, notifySuccess } from "./show_window";
-import { authChallenge, authVerify } from "./auth";
 import { getServerSideConfig } from "@/app/config/server";
 
 const config = getServerSideConfig();
 console.log(`config=${JSON.stringify(config)}`);
-const JWT_SECRET = config.jwt_secret;
 // 等待钱包注入
 export async function waitForWallet() {
   return new Promise((resolve, reject) => {
@@ -168,7 +165,34 @@ export async function loginWithChallenge() {
     return;
   }
   try {
-    const challenge = await authChallenge(currentAccount);
+    // 1. 从后端获取 Challenge
+    const header = {
+      did: "xxxx",
+    };
+    const body = {
+      header: header,
+      body: {
+        address: currentAccount,
+      },
+    };
+    const response = await fetch("/api/yeying/api/v1/auth/challenge", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `❌Failed to create post: ${
+          response.status
+        } error: ${await response.text()}`,
+      );
+    }
+    const r = await response.json();
+    const challenge = r.body.result;
     if (typeof window.ethereum === "undefined") {
       return;
     }
@@ -178,14 +202,31 @@ export async function loginWithChallenge() {
       params: [challenge, currentAccount],
     });
     // 3. 发送签名到后端验证
-    const token = await authVerify(currentAccount, signature);
-    if (!(await isValidToken(token))) {
-      throw new Error(`❌验证失败, ${token}`);
+    const header2 = {
+      did: "xxxx",
+    };
+    const body2 = {
+      header: header2,
+      body: {
+        address: currentAccount,
+        signature: signature,
+      },
+    };
+    const verifyRes = await fetch("/api/yeying/api/v1/auth/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        accept: "application/json",
+      },
+      body: JSON.stringify(body2),
+    });
+    if (!verifyRes.ok) {
+      throw new Error("❌验证失败");
     }
+    const r2 = await verifyRes.json();
+    const token = r2.body.token;
     // 4. 保存 Token
     localStorage.setItem("authToken", token);
-    // const avatar = await getAvatar(currentAccount)
-    // console.log(`avatar=${avatar}`)
     notifySuccess(`✅登录成功`);
     window.location.reload();
   } catch (error) {
@@ -194,24 +235,27 @@ export async function loginWithChallenge() {
   }
 }
 
+/**
+ * 检查 token 是否有效
+ * @param token
+ * @returns
+ */
 export async function isValidToken(
-  token?: string | null | undefined,
+  token: string | undefined | null,
 ): Promise<boolean> {
   try {
     if (token === undefined || token === null) {
       return false;
     }
-    const secret = new TextEncoder().encode(
-      JWT_SECRET ||
-        "e802e988a02546cc47415e4bc76346aae7ceece97a0f950319c861a5de38b20d",
+    const payloadBase6 = token.split(".")[1];
+    const payloadJson = atob(
+      payloadBase6.replace(/-/g, "+").replace(/_/g, "/"),
     );
-    console.log(`process.env.JWT_SECRET ===== ${JWT_SECRET}`);
-    console.log(`secret====${secret}`);
-    console.log(`token====${token}`);
-    await jwtVerify(token, secret);
-    return true;
-  } catch (error) {
-    console.warn("JWT 验证失败:", error);
+    const payload = JSON.parse(payloadJson);
+    const currentTime = Math.floor(Date.now() / 1000); // 当前时间（秒）
+    return payload.exp > currentTime;
+  } catch (e) {
+    // token 格式错误或无法解析
     return false;
   }
 }
