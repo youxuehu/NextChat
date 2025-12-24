@@ -98,8 +98,6 @@ declare global {
       ENABLE_MCP?: string; // enable mcp functionality
 
       YEYING_BACKEND_URL?: string;
-
-      JWT_SECRET?: string;
     }
   }
 }
@@ -279,6 +277,5 @@ export const getServerSideConfig = () => {
     allowedWebDavEndpoints,
     enableMcp: process.env.ENABLE_MCP === "true",
     backend_url: process.env.YEYING_BACKEND_URL,
-    jwt_secret: process.env.JWT_SECRET,
   };
 };

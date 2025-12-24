@@ -33,7 +33,6 @@ import { initializeMcpSystem, isMcpEnabled } from "../mcp/actions";
 import { waitForWallet } from "../plugins/wallet";
 import { toast } from "sonner";
 
-// 替换原来的 notifyError(innerHTML)
 import { useToastStore } from "../store/toast";
 
 const loadFunc = async () => {
@@ -53,25 +52,17 @@ const loadFunc = async () => {
       </ul>
     `;
     localStorage.setItem("hasConnectedWallet", "false");
-
-    // ✅ 只设置状态，不调用 toast
     useToastStore.getState().setPendingError(innerHTML);
   }
 };
 
-// ✅ 使用 IIFE 包裹异步逻辑，避免顶层 await
-(async () => {
-  // if (document.readyState === "complete") {
-  //   console.log("页面已加载，立即检测钱包");
-  //   await loadFunc();
-  // } else {
-  //   console.log("等待页面加载完成...");
-  //   window.addEventListener("load", loadFunc);
-  // }
-  window.addEventListener("load", loadFunc);
-})();
-
 export function Loading(props: { noLogo?: boolean }) {
+  useEffect(() => {
+    // 确保 DOM 已加载（等价于 window.onload）
+    if (typeof window !== "undefined") {
+      loadFunc();
+    }
+  }, []);
   return (
     <div className={clsx("no-dark", styles["loading-content"])}>
       {!props.noLogo && <BotIcon />}
