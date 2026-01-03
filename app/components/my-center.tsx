@@ -93,7 +93,7 @@ export function Centers() {
                 subTitle={
                   storageQuota?.quota === undefined
                     ? "-"
-                    : storageQuota?.quota + ""
+                    : storageQuota?.quota + "GB"
                 }
               />
               <ListItem
@@ -101,7 +101,7 @@ export function Centers() {
                 subTitle={
                   storageQuota?.used === undefined
                     ? "-"
-                    : storageQuota?.used + ""
+                    : storageQuota?.used + "GB"
                 }
               />
               <ListItem
@@ -109,7 +109,7 @@ export function Centers() {
                 subTitle={
                   storageQuota?.available === undefined
                     ? "-"
-                    : storageQuota?.available + ""
+                    : storageQuota?.available + "GB"
                 }
               />
             </List>
