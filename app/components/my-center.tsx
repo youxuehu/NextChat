@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IconButton } from "./button";
 import { List, ListItem } from "./ui-lib";
 import CloseIcon from "../icons/close.svg";
@@ -6,13 +6,7 @@ import styles from "./my-center.module.scss";
 import { useNavigate } from "react-router-dom";
 import { Path } from "../constant";
 import Locale from "../locales";
-
-// 假设这些数据来自 API 或 Store（此处 mock）
-const mockStorage = {
-  total: "10 GB",
-  used: "3.2 GB",
-  remaining: "6.8 GB",
-};
+import { fetchQuota, WebDAVQuota } from "../plugins/webdav";
 
 const mockProfile = {
   phone: "+86 138****5678",
@@ -36,6 +30,18 @@ export function Centers() {
     { key: "usage", label: Locale.MyCenter.Tab3.Title },
     { key: "service", label: Locale.MyCenter.Tab4.Title },
   ];
+
+  const [storageQuota, setStorageQuota] = useState<WebDAVQuota | null>(null);
+
+  useEffect(() => {
+    const loadQuota = async () => {
+      const quota = await fetchQuota();
+      if (quota) {
+        setStorageQuota(quota);
+      }
+    };
+    loadQuota();
+  }, []);
 
   return (
     <div>
@@ -84,15 +90,27 @@ export function Centers() {
             <List>
               <ListItem
                 title={Locale.MyCenter.Tab1.Info.Total}
-                subTitle={mockStorage.total}
+                subTitle={
+                  storageQuota?.quota === undefined
+                    ? "-"
+                    : storageQuota?.quota + "GB"
+                }
               />
               <ListItem
                 title={Locale.MyCenter.Tab1.Info.Used}
-                subTitle={mockStorage.used}
+                subTitle={
+                  storageQuota?.used === undefined
+                    ? "-"
+                    : storageQuota?.used + "GB"
+                }
               />
               <ListItem
                 title={Locale.MyCenter.Tab1.Info.Remain}
-                subTitle={mockStorage.remaining}
+                subTitle={
+                  storageQuota?.available === undefined
+                    ? "-"
+                    : storageQuota?.available + "GB"
+                }
               />
             </List>
           )}
