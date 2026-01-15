@@ -1,4 +1,3 @@
-// src/app/api/yeying/[...path]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "@/app/config/server";
 
@@ -46,16 +45,18 @@ async function handle(
     req.method.toUpperCase(),
   );
   const body = shouldHaveBody ? await req.text() : null;
-
+  let res = undefined;
   try {
     const fetchRes = await fetch(targetUrl, {
       method: req.method,
-      headers,
+      //headers,
       body: body || undefined,
-      redirect: "manual",
+      //redirect: "manual",
       // @ts-ignore
-      duplex: "half", // 用于流式请求（如 POST with body）
+      //duplex: "half", // 用于流式请求（如 POST with body）
     });
+
+    res = fetchRes;
 
     // 返回响应
     const responseHeaders = new Headers(fetchRes.headers);
@@ -70,7 +71,16 @@ async function handle(
   } catch (error) {
     console.error("[Yeying Proxy] Error:", error);
     return NextResponse.json(
-      { error: true, msg: "Failed to proxy request to Yeying backend" },
+      {
+        error: true,
+        msg:
+          "Failed to proxy request to Yeying backend " +
+          res +
+          body +
+          JSON.stringify(headers) +
+          targetUrl +
+          req.method,
+      },
       { status: 500 },
     );
   }

@@ -74,9 +74,11 @@ import { useMaskStore } from "../store/mask";
 import { ProviderType } from "../utils/cloud";
 import { TTSConfigList } from "./tts-config";
 import { RealtimeConfigList } from "./realtime-chat/realtime-config";
+import { modelProvider } from "../plugins/router";
 
 const ROUTER_BASE_URL = "https://shengnw.win";
-const ROUTER_PROVIDERS = [ServiceProvider.OpenAI];
+// const ROUTER_PROVIDERS = [ServiceProvider.OpenAI];
+const ROUTER_PROVIDERS = await modelProvider();
 
 function EditPromptModal(props: { id: string; onClose: () => void }) {
   const promptStore = usePromptStore();

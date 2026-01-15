@@ -7,7 +7,7 @@ const WEBDAV_BACKEND_URL = config.web_dav_backend_url;
 if (!WEBDAV_BACKEND_URL) {
   throw new Error("YEYING_BACKEND_URL is not set in environment variables");
 }
-
+// tokens 调用量
 async function handle(
   req: NextRequest,
   { params }: { params: { path: string[] } },
@@ -20,11 +20,24 @@ async function handle(
   const targetUrl = `${WEBDAV_BACKEND_URL}${urlPath}`;
 
   // 转发请求头（保留 Content-Type、Authorization 等）
+  // 转发请求头（保留 Content-Type、Authorization 等）
   const headers: HeadersInit = {};
-  for (const [key, value] of req.headers.entries()) {
-    // 可选：过滤敏感头，但通常直接透传即可
-    headers[key] = value;
+  //   for (const [key, value] of req.headers.entries()) {
+  //     // 可选：过滤敏感头，但通常直接透传即可
+  //     if ("Authorization" === key) {
+  //         headers[key] = value;
+  //     }
+  //   }
+  const authorization = req.headers.get("Authorization");
+  if (authorization === undefined || authorization === null) {
+    return NextResponse.json(
+      { error: true, msg: "Failed to proxy request to Yeying backend" },
+      { status: 500 },
+    );
   }
+  headers["Content-Type"] = "application/json";
+  headers["Accept"] = "application/json";
+  headers["Authorization"] = authorization;
 
   // 判断是否需要 body
   const shouldHaveBody = !["GET", "HEAD", "OPTIONS"].includes(

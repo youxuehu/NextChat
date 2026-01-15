@@ -178,7 +178,7 @@ export async function loginWithChallenge() {
       body: JSON.stringify(body),
     });
 
-    console.log(`response=${response}`);
+    console.log(`response=${JSON.stringify(response)}`);
 
     if (!response.ok) {
       throw new Error(
@@ -188,7 +188,7 @@ export async function loginWithChallenge() {
       );
     }
     const r = await response.json();
-    const challenge = r.message;
+    const challenge = r.body.message;
     if (typeof window.ethereum === "undefined") {
       return;
     }
@@ -214,7 +214,7 @@ export async function loginWithChallenge() {
       throw new Error("❌验证失败");
     }
     const r2 = await verifyRes.json();
-    const token = r2.token;
+    const token = r2.body.token;
     // 4. 保存 Token
     localStorage.setItem("authToken", token);
     notifySuccess(`✅登录成功`);

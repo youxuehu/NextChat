@@ -1,3 +1,4 @@
+// 模型供应商列表
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSideConfig } from "@/app/config/server";
 
@@ -21,11 +22,22 @@ async function handle(
 
   // 转发请求头（保留 Content-Type、Authorization 等）
   const headers: HeadersInit = {};
-  for (const [key, value] of req.headers.entries()) {
-    // 可选：过滤敏感头，但通常直接透传即可
-    headers[key] = value;
+  //   for (const [key, value] of req.headers.entries()) {
+  //     // 可选：过滤敏感头，但通常直接透传即可
+  //     if ("Authorization" === key) {
+  //         headers[key] = value;
+  //     }
+  //   }
+  const authorization = req.headers.get("Authorization");
+  if (authorization === undefined || authorization === null) {
+    return NextResponse.json(
+      { error: true, msg: "Failed to proxy request to Yeying backend" },
+      { status: 500 },
+    );
   }
-
+  headers["Content-Type"] = "application/json";
+  headers["Accept"] = "application/json";
+  headers["Authorization"] = authorization;
   // 判断是否需要 body
   const shouldHaveBody = !["GET", "HEAD", "OPTIONS"].includes(
     req.method.toUpperCase(),
@@ -36,7 +48,6 @@ async function handle(
     const fetchRes = await fetch(targetUrl, {
       method: req.method,
       headers,
-      redirect: "manual",
     });
 
     // 返回响应
